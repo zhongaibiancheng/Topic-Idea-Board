@@ -2,61 +2,144 @@
 
 Demo URL: https://schedule.jessyu.xyz
 
-## Initial the project
+## Prerequisites
 
-#### 1.Download the dependencies
+- **Node.js** >= 12 (for frontend)
+- **Python** >= 3.9 (for backend)
+- **MySQL** >= 5.7 (or MariaDB)
+- **Redis** (for Celery tasks)
 
-1. ```shell
-   git clone git@github.com:zhongaibiancheng/Topic-Idea-Board.git
-   ```
-2. ```shell
-   cd Flask-Vue-Reminder/frontend
-   yarn install
-   ```
-3. ```shell
-   cd ../backend
-   python3 -m venv venv
-   source ./venv/bin/activate
-   pip install -r requirements.txt
-   ```
-4. ```shell
-   cd ../tasks
-   python3 -m venv venv
-   source ./venv/bin/activate
-   pip install -r requirements.txt 
-   ```
+---
 
-#### Config file settings
+## Frontend Setup
 
-1. **Backend settings**
+```shell
+cd frontend
+yarn install
+```
 
-   (1) *We can add three types of config files in backend/config/*
+### Frontend Environment Variables
 
-   - reminder-config-default.json
-   - reminder-config-docker.json
+Create a `.env` file in the `frontend/` directory:
 
-     > Local config(secret): reminder-config.json
-     >
-     > The order that will be initialed：
-     >
-     > reminder-config.json > reminder-config-default.json >
-     >
-     > reminder-config-docker.json
-     >
+```shell
+# frontend/.env
+VUE_APP_IP=http://localhost:5000
+```
 
-   (2) *We can add three types of config files in tasks/config/*
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `VUE_APP_IP` | Backend API base URL (protocol + host + port) | `http://localhost:5000` |
 
-   - tasks-config-default.json
-   - tasks-config-docker.json
+> The backend Flask dev server runs on port **5000** by default. If you change the backend port, update this value accordingly.
 
-     > Local config(secret): tasks-config.json
-     >
-     > The order that will be initialed：
-     >
-     > tasks-config.json > tasks-config-default.json >
-     >
-     > tasks-config-docker.json
-     >
+Start the frontend dev server:
+
+```shell
+yarn serve
+```
+
+---
+
+## Backend Setup (Local Development, no Docker)
+
+### 1. Create MySQL Database & User
+
+```shell
+mysql -u root -p
+```
+
+```sql
+CREATE USER IF NOT EXISTS 'test'@'localhost' IDENTIFIED BY 'password';
+CREATE DATABASE IF NOT EXISTS flask CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+GRANT ALL PRIVILEGES ON flask.* TO 'test'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+### 2. Configure Database Connection
+
+Copy the default config and edit it:
+
+```shell
+cd backend
+cp config/reminder-config-default.json config/reminder-config.json
+```
+
+Edit `config/reminder-config.json` to match your MySQL settings:
+
+```json
+{
+    "SQLALCHEMY_DATABASE_URI": "mysql://test:password@localhost/flask",
+    "SECRET_KEY": "secretkey",
+    "BASIC_AUTH_USERNAME": "John_Doe",
+    "BASIC_AUTH_PASSWORD": "password"
+}
+```
+
+> `reminder-config.json` is gitignored, so your local credentials won't be committed.
+
+### 3. Install Python Dependencies
+
+```shell
+cd backend
+python3 -m venv venv
+source ./venv/bin/activate
+pip install -r requirements.txt
+```
+
+### 4. Create Database Tables
+
+```shell
+cd backend
+python -c "
+from app import app, db
+with app.app_context():
+    db.create_all()
+    print('Tables created successfully')
+"
+```
+
+### 5. Start the Backend Server
+
+```shell
+cd backend
+python app.py
+```
+
+The backend will start at `http://localhost:5000`.
+
+---
+
+## Tasks (Celery) Setup
+
+```shell
+cd tasks
+python3 -m venv venv
+source ./venv/bin/activate
+pip install -r requirements.txt
+```
+
+Configure database and mail settings in `tasks/config/tasks-config.json` (copy from `tasks-config-default.json`).
+
+---
+
+## Quick Overview
+
+### Config file loading order
+
+**Backend** (`backend/config/`):
+```
+reminder-config.json          # Local (gitignored) — highest priority
+reminder-config-default.json  # Default values
+reminder-config-docker.json   # Docker-specific values — lowest priority
+```
+
+**Tasks** (`tasks/config/`):
+```
+tasks-config.json             # Local (gitignored) — highest priority
+tasks-config-default.json     # Default values
+tasks-config-docker.json      # Docker-specific values — lowest priority
+```
 
 ## The framework Flask-Vue-Reminder used
 
@@ -112,7 +195,8 @@ Demo URL: https://schedule.jessyu.xyz
 ``schema.py``: **Flask-Marshmallow**
 
 ``app.ini`` and ``app-local.ini`` for ``uwsgi``.
-First one is for **Dev**, second one is for **Production**
+- ``app.ini``: uses **socket** (for Docker/Production with nginx proxy)
+- ``app-local.ini``: uses **http** (for local development, runs on port 5000)
 
 ``app/admin.py``: **Flask-Admin** settings
 
