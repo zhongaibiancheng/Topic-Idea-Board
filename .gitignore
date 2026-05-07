@@ -25,6 +25,7 @@ venv/
 .dbdata/
 
 # .env
+.env
 **/.env.local
 
 tasks/config/tasks-config.json

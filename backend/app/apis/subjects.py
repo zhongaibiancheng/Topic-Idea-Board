@@ -96,7 +96,8 @@ class SubjectCreate(Resource):
                             hw_detail=data['detail'], 
                             reminding_time=data['reminding_time'],
                             reminding_date=data['reminding_date'],
-                            pages=data['pages'])
+                            pages=data['pages'],
+                            user_id=1)
         db.session.add(subject)
         db.session.commit()
 
